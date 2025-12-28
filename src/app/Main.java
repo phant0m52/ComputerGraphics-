@@ -1,5 +1,11 @@
-public class Main {
+package app;
+
+import ui.MainFrame;
+
+import javax.swing.*;
+
+public final class Main {
     public static void main(String[] args) {
-        System.out.println("Hello world!");
+        SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
     }
 }
