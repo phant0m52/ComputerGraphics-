@@ -1,105 +1,150 @@
 package math;
-
 import java.util.Arrays;
 
 public final class Mat4 {
-    // m[row][col]
-    private final double[][] m;
 
-    private Mat4(double[][] m) { this.m = m; }
+    private final double [][] m;
 
-    public static Mat4 identity() {
+    private Mat4(double[][] m){
+        this.m = m;
+    }
+
+    public static Mat4 identity(){
         double[][] r = new double[4][4];
         for (int i = 0; i < 4; i++) r[i][i] = 1.0;
         return new Mat4(r);
     }
 
-    public static Mat4 of(double[][] a) {
-        if (a.length != 4 || a[0].length != 4) throw new IllegalArgumentException("Mat4 must be 4x4");
-        double[][] c = new double[4][4];
-        for (int i = 0; i < 4; i++) System.arraycopy(a[i], 0, c[i], 0, 4);
-        return new Mat4(c);
+    /**
+     * Матрица * вектор
+     */
+    public Vec4 multiply(Vec4 v){
+        if (v == null) throw new NullPointerException("v must not be null");
+
+        double rx = m[0][0]*v.x + m[0][1]*v.y + m[0][2]*v.z + m[0][3]*v.w;
+        double ry = m[1][0]*v.x + m[1][1]*v.y + m[1][2]*v.z + m[1][3]*v.w;
+        double rz = m[2][0]*v.x + m[2][1]*v.y + m[2][2]*v.z + m[2][3]*v.w;
+        double rw = m[3][0]*v.x + m[3][1]*v.y + m[3][2]*v.z + m[3][3]*v.w;
+        return new Vec4(rx, ry, rz, rw);
     }
 
-    public double get(int row, int col) { return m[row][col]; }
-
-    // C = this * b
-    public Mat4 mul(Mat4 b) {
+    /**
+     * Матрица * матрица
+     */
+    public Mat4 multiply(Mat4 b){
+        if (b == null) throw new NullPointerException("b must not be null");
         double[][] r = new double[4][4];
-        for (int i = 0; i < 4; i++) {          // row
-            for (int j = 0; j < 4; j++) {      // col
-                double s = 0.0;
-                for (int k = 0; k < 4; k++) s += this.m[i][k] * b.m[k][j];
-                r[i][j] = s;
+        for (int i = 0; i < 4; i++){  //row
+            for (int j = 0; j < 4; j++) {  //col
+                double c =0.0;
+                for (int k = 0; k < 4; k++) {
+                    c += this.m[i][k] * b.m[k][j];
+                }
+                r[i][j] = c;
             }
         }
         return new Mat4(r);
     }
-
-    // v' = M * v  (столбцы)
-    public Vec4 mul(Vec4 v) {
-        double[] a = {v.x, v.y, v.z, v.w};
-        double[] r = new double[4];
-        for (int i = 0; i < 4; i++) {
-            double s = 0.0;
-            for (int k = 0; k < 4; k++) s += m[i][k] * a[k];
-            r[i] = s;
-        }
-        return new Vec4(r[0], r[1], r[2], r[3]);
+    public static Mat4 translate(double tx, double ty, double tz){
+        double[][] r = new double[4][4];
+        for (int i = 0; i < 4; i++) r[i][i] = 1.0;
+        r[0][3] =tx;
+        r[1][3] = ty;
+        r[2][3] = tz;
+        return new Mat4(r);
     }
-
-    public Vec3 transformPoint(Vec3 p) {
-        Vec4 r = mul(Vec4.point(p));
-        if (r.w == 0.0) return r.xyz();
-        return new Vec3(r.x / r.w, r.y / r.w, r.z / r.w);
-    }
-
-    public Vec3 transformDirection(Vec3 d) {
-        return mul(Vec4.dir(d)).xyz();
-    }
-
-    // --- Аффинные фабрики под столбцы: p' = M * p ---
-
-    public static Mat4 translation(double tx, double ty, double tz) {
-        Mat4 r = identity();
-        r.m[0][3] = tx;
-        r.m[1][3] = ty;
-        r.m[2][3] = tz;
-        return r;
-    }
-
     public static Mat4 scale(double sx, double sy, double sz) {
         double[][] r = new double[4][4];
-        r[0][0] = sx; r[1][1] = sy; r[2][2] = sz; r[3][3] = 1.0;
+        r[0][0] = sx;
+        r[1][1] = sy;
+        r[2][2] = sz;
+        r[3][3] = 1;
         return new Mat4(r);
     }
 
-    public static Mat4 rotationX(double angleRad) {
-        double c = Math.cos(angleRad), s = Math.sin(angleRad);
+    public static Mat4 rotateX(double a){
         double[][] r = new double[4][4];
-        r[0][0] = 1; r[3][3] = 1;
-        r[1][1] = c;  r[1][2] = -s;
-        r[2][1] = s;  r[2][2] = c;
+        for (int i = 0; i < 4; i++) r[i][i] = 1.0;
+        double c = Math.cos(a);
+        double s = Math.sin(a);
+        r[1][1] = c;
+        r[1][2] = -s;
+        r[2][1] = s;
+        r[2][2] = c;
+
         return new Mat4(r);
     }
 
-    public static Mat4 rotationY(double angleRad) {
-        double c = Math.cos(angleRad), s = Math.sin(angleRad);
+    public static Mat4 rotateY(double a){
         double[][] r = new double[4][4];
-        r[1][1] = 1; r[3][3] = 1;
-        r[0][0] = c;  r[0][2] = s;
-        r[2][0] = -s; r[2][2] = c;
+        for (int i = 0; i < 4; i++) r[i][i] = 1.0;
+        double c = Math.cos(a);
+        double s = Math.sin(a);
+        r[0][0] = c;
+        r[0][2] = s;
+        r[2][0] = -s;
+        r[2][2] = c;
+
         return new Mat4(r);
     }
-
-    public static Mat4 rotationZ(double angleRad) {
-        double c = Math.cos(angleRad), s = Math.sin(angleRad);
+    public static Mat4 rotateZ(double a) {
         double[][] r = new double[4][4];
-        r[2][2] = 1; r[3][3] = 1;
-        r[0][0] = c;  r[0][1] = -s;
-        r[1][0] = s;  r[1][1] = c;
+        for (int i = 0; i < 4; i++) r[i][i] = 1.0;
+
+        double c = Math.cos(a);
+        double s = Math.sin(a);
+
+        r[0][0] = c;
+        r[0][1] = -s;
+        r[1][0] = s;
+        r[1][1] = c;
+
         return new Mat4(r);
     }
 
-    @Override public String toString() { return Arrays.deepToString(m); }
+    public boolean epsEquals(Mat4 b, double eps) {
+        if (b == null) {
+            throw new NullPointerException("b must not be null");
+        }
+        if (eps < 0.0) {
+            throw new IllegalArgumentException("eps must be >= 0");
+        }
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+               if(Math.abs(this.m[i][j] - b.m[i][j]) > eps){
+                   return false;
+               }
+            }
+
+        }
+        return true;
+    }
+    public double get(int row, int col) {
+        return m[row][col]; }
+
+    @Override public String toString() {
+        return Arrays.deepToString(m); }
+
+    public static Mat4 fromArray(double[][] a) {
+        if (a == null) {
+            throw new NullPointerException("a must not be null");
+        }
+        if (a.length != 4) {
+            throw new IllegalArgumentException("array must be 4x4");
+        }
+        for (int i = 0; i < 4; i++) {
+            if (a[i] == null || a[i].length != 4) {
+                throw new IllegalArgumentException("array must be 4x4");
+            }
+        }
+
+        double[][] r = new double[4][4];
+        for (int i = 0; i < 4; i++) {
+            System.arraycopy(a[i], 0, r[i], 0, 4);
+        }
+        return new Mat4(r);
+    }
+
+
+
 }

@@ -4,72 +4,56 @@ import math.Mat4;
 import math.Vec3;
 import math.Vec4;
 
-import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Renderer (пока очень простой) — показывает, где происходит конвейер.
+ * Сейчас делает только local -> world через Transform.
+ * Позже сюда добавятся camera/view/projection/viewport и растеризация.
+ */
 public final class Renderer {
 
-    public void render(Graphics2D g, int w, int h, Mesh mesh, Camera camera) {
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    /**
+     * Возвращает вершины модели в мировых координатах.
+     * Это шаг local -> world: world = M_model * local
+     */
+    public List<Vec3> renderWorld(ModelInstance instance) {
+        if (instance == null) throw new NullPointerException("instance must not be null");
 
-        Mat4 model = mesh.transform.toMatrix();
-        Mat4 view = camera.viewMatrix();
-        Mat4 proj = camera.projectionMatrix();
+        Mesh mesh = instance.getMesh();
+        Transform tr = instance.getTransform();
 
-        // Конвейер под столбцы: clip = P * V * M * p
-        Mat4 mvp = proj.mul(view).mul(model);
+        Mat4 model = tr.toMatrix();
 
-        // Проецируем все вершины (сохраним экранные координаты)
-        List<Point> screen = new ArrayList<>(mesh.vertices.size());
-        List<Boolean> valid = new ArrayList<>(mesh.vertices.size());
-
-        for (Vec3 v : mesh.vertices) {
-            Vec4 clip = mvp.mul(Vec4.point(v));
-
-            // простая отбраковка за камерой (w <= 0)
-            if (clip.w <= 1e-9) {
-                screen.add(new Point(0, 0));
-                valid.add(false);
-                continue;
-            }
-
-            double ndcX = clip.x / clip.w;
-            double ndcY = clip.y / clip.w;
-            double ndcZ = clip.z / clip.w;
-
-            // грубая NDC-отбраковка (можно оставить)
-            if (ndcZ < -1.5 || ndcZ > 1.5) {
-                screen.add(new Point(0, 0));
-                valid.add(false);
-                continue;
-            }
-
-            int sx = (int) Math.round((ndcX * 0.5 + 0.5) * (w - 1));
-            int sy = (int) Math.round(((-ndcY) * 0.5 + 0.5) * (h - 1)); // y вниз
-            screen.add(new Point(sx, sy));
-            valid.add(true);
+        List<Vec3> worldVerts = new ArrayList<>(mesh.vertexCount());
+        for (Vec3 vLocal : mesh.getVertices()) {
+            Vec4 p = Vec4.point(vLocal);     // точка (w=1)
+            Vec4 pw = model.multiply(p);     // world = M * local
+            worldVerts.add(new Vec3(pw.x, pw.y, pw.z));
         }
+        return worldVerts;
+    }
 
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, w, h);
+    /**
+     * Если тебе удобнее получать сразу треугольники (по индексам),
+     * можно вернуть список треугольников как троек Vec3.
+     * Здесь оставляю как заготовку: используешь indices из mesh.
+     */
+    public List<Vec3[]> renderWorldTriangles(ModelInstance instance) {
+        if (instance == null) throw new NullPointerException("instance must not be null");
 
-        g.setColor(Color.WHITE);
-        for (int[] tri : mesh.faces) {
-            int a = tri[0], b = tri[1], c = tri[2];
-            if (!valid.get(a) || !valid.get(b) || !valid.get(c)) continue;
+        List<Vec3> w = renderWorld(instance);
+        int[] idx = instance.getMesh().getIndices();
 
-            Point pa = screen.get(a);
-            Point pb = screen.get(b);
-            Point pc = screen.get(c);
-
-            g.drawLine(pa.x, pa.y, pb.x, pb.y);
-            g.drawLine(pb.x, pb.y, pc.x, pc.y);
-            g.drawLine(pc.x, pc.y, pa.x, pa.y);
+        List<Vec3[]> tris = new ArrayList<>(idx.length / 3);
+        for (int i = 0; i < idx.length; i += 3) {
+            tris.add(new Vec3[] {
+                    w.get(idx[i]),
+                    w.get(idx[i + 1]),
+                    w.get(idx[i + 2])
+            });
         }
-
-        // небольшой HUD
-        g.setColor(new Color(255,255,255,180));
-        g.drawString("RMB + mouse: look | WASD: move | wheel: speed | SHIFT: boost", 10, 20);
+        return tris;
     }
 }
