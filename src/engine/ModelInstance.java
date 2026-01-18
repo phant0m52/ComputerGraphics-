@@ -35,6 +35,24 @@ public final class ModelInstance {
     }
 
     /**
+     * Возвращает новый ModelInstance, где текущий Transform "запечён" в геометрию.
+     * То есть vertices становятся уже в world (относительно текущего instance),
+     * а Transform сбрасывается в identity.
+     */
+    public ModelInstance baked() {
+        Mesh bakedMesh = bakedMesh();
+        return new ModelInstance(bakedMesh, new Transform());
+    }
+
+    /**
+     * Возвращает Mesh с применённым Transform (bake), без создания нового instance.
+     */
+    public Mesh bakedMesh() {
+        Mat4 m = transform.toMatrix();
+        return mesh.transformed(m);
+    }
+
+    /**
      * Преобразует вершины меша из local в world по текущему Transform.
      * Это как раз ваш шаг local -> world.
      */

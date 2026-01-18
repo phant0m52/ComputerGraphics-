@@ -1,6 +1,8 @@
 package engine;
 
+import math.Mat4;
 import math.Vec3;
+import math.Vec4;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,5 +52,30 @@ public final class Mesh {
 
     public int vertexCount() {
         return vertices.size();
+    }
+
+    /**
+     * Возвращает новый Mesh, где все вершины преобразованы матрицей transform.
+     * Полезно для "bake/apply transform" при сохранении модели.
+     *
+     * Конвенция: column-vector, т.е. v' = M * v.
+     */
+    public Mesh transformed(Mat4 transform) {
+        if (transform == null) throw new NullPointerException("transform must not be null");
+
+        List<Vec3> out = new ArrayList<>(vertices.size());
+        for (Vec3 v : vertices) {
+            Vec4 p = Vec4.point(v);        // w=1
+            Vec4 tp = transform.multiply(p);
+
+            // Для аффинных матриц w должен остаться 1, но сделаем безопасно.
+            double w = tp.w;
+            if (Math.abs(w) > 1e-12) {
+                out.add(new Vec3(tp.x / w, tp.y / w, tp.z / w));
+            } else {
+                out.add(new Vec3(tp.x, tp.y, tp.z));
+            }
+        }
+        return new Mesh(out, this.indices);
     }
 }
