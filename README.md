@@ -1,3 +1,3 @@
-Правильный путь к проекту src/src/ 
-Goncharov Denis (engine, math) 
+Goncharov Denis (math) 
 Ivanenko Dmitry (app) 
+Kokhan Denis (engine)
